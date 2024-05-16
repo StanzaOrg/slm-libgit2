@@ -1,0 +1,24 @@
+include? ".slm/stanza.proj"
+pkg-cache: ".slm/pkg-cache"
+
+package libgit2 defined-in "src/libgit2.stanza"
+packages libgit2/* defined-in "src/libgit2"
+
+include "stanza-libgit2.proj"
+
+; This include file will only exist in the git repo at binary package build time.
+; End-user slm packages will not have this include file.
+include? "stanza-library.proj"
+
+build main :
+  inputs:
+    libgit2
+  pkg: ".slm/pkgs"
+  s: "main.s"
+  o: "main"
+
+build-test test :
+  inputs:
+    libgit2/tests
+  pkg: ".slm/test-pkgs"
+  o: "libgit2-test"

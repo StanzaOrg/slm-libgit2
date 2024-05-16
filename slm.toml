@@ -1,0 +1,18 @@
+name = "slm-libgit2"
+version = "0.0.0"
+
+[dependencies]
+
+[dependencies.libgit2]
+pkg="libgit2"
+version="1.7.2"
+type="conan"
+options.shared = "False"
+options.threadsafe = "True"
+options.with_https = "openssl"
+options.with_libssh2 = "True"
+options.with_ntlmclient = "False"
+options.with_regex = "builtin"
+options.with_sha1 = "openssl"
+options.linux.fPIC = "True"
+options.macos.fPIC = "True"

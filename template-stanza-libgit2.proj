@@ -1,0 +1,2 @@
+package libgit2 requires :
+  ccfiles: "src/libgit2.c"

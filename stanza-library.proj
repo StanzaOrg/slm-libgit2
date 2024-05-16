@@ -1,0 +1,20 @@
+
+; These compile instructions are for binary package build time.
+; End-user slm packages will not have this include file.
+
+; compile libgit2.c into a static library
+compile flag "-lstz-libgit2" :
+  on-platform :
+    linux :
+      "mkdir -p '{.}/lib'"
+      "cc -fPIC -c -DPLATFORM_LINUX '-I{STANZA_CONFIG}/include' '{.}/src/libgit2.c' -o '{.}/lib/libgit2.o'"
+      "ar rcs '{.}/lib/libstz-libgit2.a' '{.}/lib/libgit2.o'"
+    os-x :
+      "mkdir -p '{.}/lib'"
+      "cc -fPIC -c -DPLATFORM_OS_X '-I{STANZA_CONFIG}/include' '{.}/src/libgit2.c' -c -o '{.}/lib/libgit2.o'"
+      "ar rcs '{.}/lib/libstz-libgit2.a' '{.}/lib/libgit2.o'"
+    windows :
+      "mkdir {.}\\lib"
+      "gcc -c -DPLATFORM_WINDOWS '-I{STANZA_CONFIG}\\include' '{.}\\src\\libgit2.c' -o '{.}\\lib\\libgit2.o'"
+      "ar rcs '{.}\\lib\\libstz-libgit2.a' '{.}\\lib\\libgit2.o'"
+
