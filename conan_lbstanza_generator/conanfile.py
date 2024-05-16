@@ -71,7 +71,7 @@ class LBStanzaGenerator:
             # FIXME: check the "frameworks" and "system_libs" entries in the conan datastructure
             extralibslnx = " \"-lz\" \"-ldl\" "
             extralibsmac = " \"-lz\" \"-Wl,-framework,CoreFoundation\" \"-Wl,-framework,SystemConfiguration\" \"-Wl,-framework,Security\" "
-            extralibswin = " \"-lz\" \"-lbcrypt\" \"-lcrypt32\" \"-lws2_32\" \"-lwinhttp\" "
+            extralibswin = " \"-lz\" \"-lbcrypt\" \"-lcrypt32\" \"-lws2_32\" \"-lgdi32\" \"-lwinhttp\" \"-lrpcrt4\" \"-lsecur32\" \"-lole32\" "
 
             # note: use '\n' for line terminator on all platforms
             if not package_requires_found:
