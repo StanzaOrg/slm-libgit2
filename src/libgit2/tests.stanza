@@ -20,7 +20,7 @@ deftest test-error-last :
   #EXPECT(message(e) == expected_message)
   #EXPECT(git_error_t(klass(e)) == GIT_ERROR_INVALID)
 
-deftest test-clone :
+deftest(online) test-clone :
   libgit2_init()
   val r:git_error_code|GIT_REPOSITORY = libgit2_clone("https://github.com/StanzaOrg/stanza-toml.git", "./foo")
   match(r):
