@@ -93,9 +93,8 @@ extern git_repository_open : (ptr<ptr<GIT_REPOSITORY>>, ptr<byte>) -> int
 ; --- libgit2.c - Our local convenience wrappers -------------------------------
 ; ------------------------------------------------------------------------------
 
-;; int stz_libgit2_clone(git_repository **out, const char *url, const char *local_path)
-extern stz_libgit2_clone : (ptr<ptr<GIT_REPOSITORY>>, ptr<byte>, ptr<byte>) -> int
-
+;; int stz_libgit2_clone(git_repository **out, const char *url, const char *local_path, int depth)
+extern stz_libgit2_clone : (ptr<ptr<GIT_REPOSITORY>>, ptr<byte>, ptr<byte>, int) -> int
 
 ;============================================================
 ;======================= Wrappers ===========================
@@ -116,13 +115,17 @@ public lostanza defn libgit2_error_last () -> ref<LIBGIT2_ERROR> :
   return LIBGIT2_ERROR(String(pges.message), new Int{pges.klass})
 
 ;; our wrapper for git_clone
-public lostanza defn libgit2_clone (url:ref<String>, local_path:ref<String>) -> ref<git_error_code|GIT_REPOSITORY> :
+public lostanza defn libgit2_clone (url:ref<String>, local_path:ref<String>, depth:ref<Int>) -> ref<git_error_code|GIT_REPOSITORY> :
   val pgr:ptr<ptr<?>> = call-c clib/malloc(sizeof(ptr<?>))
-  val r:int = call-c stz_libgit2_clone(pgr, addr!(url.chars), addr!(local_path.chars))
+  val r:int = call-c stz_libgit2_clone(pgr, addr!(url.chars), addr!(local_path.chars), depth.value)
   if r == 0 :
     return new GIT_REPOSITORY{[pgr]}
   else :
     return git_error_code(r)
+
+;Overload with default depth = 0 (full clone)
+public defn libgit2_clone (url:String, local_path:String) -> git_error_code|GIT_REPOSITORY :
+  libgit2_clone(url, local_path, 0)
 
 public lostanza defn libgit2_repository_free (gr:ref<GIT_REPOSITORY>) -> ref<Int> :
   return new Int{call-c git_repository_free(gr.gr-ptr)}
