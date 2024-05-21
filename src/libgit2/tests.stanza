@@ -32,3 +32,16 @@ deftest(online) test-clone :
       libgit2_repository_free(gr)
       #EXPECT(true)
   libgit2_shutdown()
+
+deftest(online) test-shallow-clone :
+  libgit2_init()
+  val r:git_error_code|GIT_REPOSITORY = libgit2_clone("https://github.com/StanzaOrg/stanza-toml.git", "./foo2", 1)
+  match(r):
+    (e:git_error_code) :
+      println("libgit2_clone returned error: %_" % [e])
+      println("last error = %_" % [message(libgit2_error_last())])
+      #EXPECT(false)
+    (gr:GIT_REPOSITORY) :
+      libgit2_repository_free(gr)
+      #EXPECT(true)
+  libgit2_shutdown()
