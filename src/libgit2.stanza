@@ -4,6 +4,7 @@ defpackage libgit2 :
 
   forward libgit2/enum/git_error_code
   forward libgit2/enum/git_error_t
+  forward libgit2/enum/git_checkout_strategy_t
 
 ;==============================================
 ;================= C Externs ==================
@@ -96,6 +97,12 @@ extern git_repository_open : (ptr<ptr<GIT_REPOSITORY>>, ptr<byte>) -> int
 ;; int stz_libgit2_clone(git_repository **out, const char *url, const char *local_path, int depth)
 extern stz_libgit2_clone : (ptr<ptr<GIT_REPOSITORY>>, ptr<byte>, ptr<byte>, int) -> int
 
+;; int stz_libgit2_fetch(git_repository *repo, const char *remote_name, const char *refspec, int depth)
+extern stz_libgit2_fetch : (ptr<GIT_REPOSITORY>, ptr<byte>, ptr<byte>, int) -> int
+
+;; int stz_libgit2_checkout(git_repository *repo, const char *refish, git_checkout_strategy_t checkout_strategy)
+extern stz_libgit2_checkout : (ptr<GIT_REPOSITORY>, ptr<byte>, int) -> int
+
 ;============================================================
 ;======================= Wrappers ===========================
 ;============================================================
@@ -114,7 +121,11 @@ public lostanza defn libgit2_error_last () -> ref<LIBGIT2_ERROR> :
   val pges:ptr<GIT_ERROR_STRUCT> = call-c git_error_last()
   return LIBGIT2_ERROR(String(pges.message), new Int{pges.klass})
 
-;; our wrapper for git_clone
+; Free the repository
+public lostanza defn libgit2_repository_free (gr:ref<GIT_REPOSITORY>) -> ref<Int> :
+  return new Int{call-c git_repository_free(gr.gr-ptr)}
+
+; Wrapper for git_clone
 public lostanza defn libgit2_clone (url:ref<String>, local_path:ref<String>, depth:ref<Int>) -> ref<git_error_code|GIT_REPOSITORY> :
   val pgr:ptr<ptr<?>> = call-c clib/malloc(sizeof(ptr<?>))
   val r:int = call-c stz_libgit2_clone(pgr, addr!(url.chars), addr!(local_path.chars), depth.value)
@@ -123,13 +134,30 @@ public lostanza defn libgit2_clone (url:ref<String>, local_path:ref<String>, dep
   else :
     return git_error_code(r)
 
-;Overload with default depth = 0 (full clone)
+; Overload for git_clone with default depth = 0 (full clone)
 public defn libgit2_clone (url:String, local_path:String) -> git_error_code|GIT_REPOSITORY :
   libgit2_clone(url, local_path, 0)
 
-public lostanza defn libgit2_repository_free (gr:ref<GIT_REPOSITORY>) -> ref<Int> :
-  return new Int{call-c git_repository_free(gr.gr-ptr)}
+; Helper for libgit2_fetch
+lostanza defn fetch_with_refspec (repo:ref<GIT_REPOSITORY>, remote-name:ref<String>, refspec:ref<String>, depth:ref<Int>) -> ref<git_error_code> :
+  val r:int = call-c stz_libgit2_fetch(repo.gr-ptr, addr!(remote-name.chars), addr!(refspec.chars), depth.value)
+  return git_error_code(r)
 
+; Helper for libgit2_fetch
+lostanza defn fetch_without_refspec (repo:ref<GIT_REPOSITORY>, remote-name:ref<String>, depth:ref<Int>) -> ref<git_error_code> :
+  val r:int = call-c stz_libgit2_fetch(repo.gr-ptr, addr!(remote-name.chars), null, depth.value)
+  return git_error_code(r)
+
+;Wrapper for git_remote_fetch
+public defn libgit2_fetch (repo:GIT_REPOSITORY, remote-name:String, refspec:String|False = false, depth:Int = 0) -> git_error_code :
+  match(refspec) :
+    (refspec:String) :  fetch_with_refspec(repo, remote-name, refspec, depth)
+    (_) : fetch_without_refspec(repo, remote-name, depth)
+
+; Wrapper for git_checkout_tree
+public lostanza defn libgit2_checkout (repo:ref<GIT_REPOSITORY>, refish:ref<String>, checkout-strategy:ref<git_checkout_strategy_t>) -> ref<git_error_code> :
+  val r:int = call-c stz_libgit2_checkout(repo.gr-ptr, addr!(refish.chars), to-int(checkout-strategy).value)
+  return git_error_code(r)
 
 ; EXAMPLE FIXME public lostanza defn libarchive_error_string (p:ref<LIBARCHIVE>) -> ref<String|False> :
 ;   val pb:ptr<byte> = call-c archive_error_string(p.la-ptr)
