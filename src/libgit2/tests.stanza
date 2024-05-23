@@ -33,7 +33,7 @@ deftest(online) test-clone :
       libgit2_repository_free(gr)
   libgit2_shutdown()
 
-deftest(online) test-shallow-clone-fetch-checkout :
+deftest(online) test-clone-fetch-revparse-checkout :
   libgit2_init()
   var err:git_error_code
 
@@ -65,5 +65,23 @@ deftest(online) test-shallow-clone-fetch-checkout :
     libgit2_repository_free(repo)
     libgit2_shutdown()
     #EXPECT(false)
+
+  ; Rev-parse
+  match(libgit2_revparse(repo, "HEAD")) :
+    (commit:String) :
+      val expected-commit = "acde96ed74455556e9da9df80c20a4a41aaaec75"
+      if commit != expected-commit :
+        println("libgit2_revparse result does not match expected: %_ != %_" % [commit, expected-commit])
+        libgit2_repository_free(repo)
+        libgit2_shutdown()
+        #EXPECT(false)
+    (err:git_error_code) :
+      println("libgit2_revparse returned error: %_" % [err])
+      println("last error = %_" % [message(libgit2_error_last())])
+      libgit2_repository_free(repo)
+      libgit2_shutdown()
+      #EXPECT(false)
+
+  ; Cleanup
   libgit2_repository_free(repo)
   libgit2_shutdown()

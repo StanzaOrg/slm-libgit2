@@ -82,3 +82,36 @@ int stz_libgit2_checkout(git_repository *repo, const char *refish, git_checkout_
   git_object_free(target_obj);
   return err;
 }
+
+// Wrapper function to handle the data structures outside of stanza
+// Convert the reference 'refish' into a git_oid
+// Requires that the library has been initialized with git_libgit2_init()
+// Requires the output string to be freed by the caller
+int stz_libgit2_revparse(char **out, git_repository *repo, const char *refish)
+{
+	int err = 0;
+  git_object *target_obj = NULL;
+
+  /* Convert the ref-like string into a git object */
+	err = git_revparse_single(&target_obj, repo, refish);
+  if (err != GIT_OK) {
+    return err;
+  }
+
+  /**
+   * Format the object ID into a hex string
+   */
+  *out = calloc(GIT_OID_MAX_HEXSIZE + 1, sizeof(char));
+  err = git_oid_fmt(*out, git_object_id(target_obj));
+  if (err != GIT_OK) {
+    git_object_free(target_obj);
+    free(*out);
+    return err;
+  }
+  (*out)[GIT_OID_MAX_HEXSIZE] = '\0';
+
+  /* Cleanup */
+  git_object_free(target_obj);
+
+  return GIT_OK;
+}
