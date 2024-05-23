@@ -20,9 +20,11 @@ deftest test-error-last :
   #EXPECT(message(e) == expected_message)
   #EXPECT(git_error_t(klass(e)) == GIT_ERROR_INVALID)
 
-deftest(online) test-clone :
+deftest(online) test-clone-open :
   libgit2_init()
-  val r:git_error_code|GIT_REPOSITORY = libgit2_clone("https://github.com/StanzaOrg/stanza-toml.git", "./foo")
+
+  ; Clone
+  var r:git_error_code|GIT_REPOSITORY = libgit2_clone("https://github.com/StanzaOrg/stanza-toml.git", "./foo")
   match(r):
     (e:git_error_code) :
       println("libgit2_clone returned error: %_" % [e])
@@ -31,14 +33,26 @@ deftest(online) test-clone :
       #EXPECT(false)
     (gr:GIT_REPOSITORY) :
       libgit2_repository_free(gr)
+
+  ; Open
+  r = libgit2_repository_open("./foo")
+  match(r):
+    (e:git_error_code) :
+      println("libgit2_open returned error: %_" % [e])
+      println("last error = %_" % [message(libgit2_error_last())])
+      libgit2_shutdown()
+      #EXPECT(false)
+    (gr:GIT_REPOSITORY) :
+      libgit2_repository_free(gr)
+
   libgit2_shutdown()
 
-deftest(online) test-clone-fetch-revparse-checkout :
+deftest(online) test-clone-fetch-checkout-revparse :
   libgit2_init()
   var err:git_error_code
 
   ; Shallow clone
-  val r:git_error_code|GIT_REPOSITORY = libgit2_clone("https://github.com/StanzaOrg/stanza-toml.git", "./foo-scfc", 1)
+  val r:git_error_code|GIT_REPOSITORY = libgit2_clone("https://github.com/StanzaOrg/stanza-toml.git", "./foo-cfcr", 1)
   val repo = match(r):
     (err:git_error_code) :
       println("libgit2_clone returned error: %_" % [err])
