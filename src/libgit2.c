@@ -1,4 +1,6 @@
 
+#include <stdlib.h>
+#include <string.h>
 #include <git2.h>
 
 // Wrapper function to handle the options structures outside of stanza
@@ -28,17 +30,10 @@ int stz_libgit2_fetch(git_repository *repo, const char *remote_name, const char 
 {
   int err = 0;
 	git_remote *remote = NULL;
-  git_strarray refspecs = {};
-  git_strarray *refspecs_ptr = NULL;
 	git_fetch_options fetch_opts = GIT_FETCH_OPTIONS_INIT;
 
 	/* Prepare options */
   fetch_opts.depth = depth;
-  if (refspec) {
-    refspecs.strings = &refspec; // safe for one-element pointer array
-    refspecs.count = 1;
-    refspecs_ptr = &refspecs;
-  }
 
   /* Lookup remote */
   err = git_remote_lookup(&remote, repo, remote_name);
@@ -46,9 +41,26 @@ int stz_libgit2_fetch(git_repository *repo, const char *remote_name, const char 
     return err;
   }
 
-	/* Perform the fetch */
-	err = git_remote_fetch(remote, refspecs_ptr, &fetch_opts, NULL);
+	/* Perform the fetch with refspecs if supplied */
+  if (refspec) {
+    // Make a copy of 'refspec' to satisfy non-const requirement
+    size_t refspec_size = strlen(refspec) + 1;
+    char *refspec_copy[1] = {};
+    refspec_copy[0] = calloc(refspec_size, sizeof(char));
+    memcpy(refspec_copy[0], refspec, refspec_size);
+
+    const git_strarray refspecs = {refspec_copy, 1};
+	  err = git_remote_fetch(remote, &refspecs, &fetch_opts, NULL);
+
+    free(refspec_copy[0]);
+  }
+  else {
+	  err = git_remote_fetch(remote, NULL, &fetch_opts, NULL);
+  }
+
+  /* Cleanup */
   git_remote_free(remote);
+
   return err;
 }
 
