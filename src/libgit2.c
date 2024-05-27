@@ -175,6 +175,10 @@ int stz_libgit2_lsremote(char ***ids_out, char ***names_out, long long *out_len,
   /* Lookup remote */
   err = git_remote_lookup(&remote, repo, remote_name);
   if (err != GIT_OK) {
+    err = git_remote_create_anonymous(&remote, repo, remote_name);
+    if (err != GIT_OK) {
+      return err;
+    }
     return err;
   }
 
