@@ -3,6 +3,35 @@
 #include <string.h>
 #include <git2.h>
 
+/**
+  * Helper: Allocate and copy the string
+  * Output string must be freed by caller
+  */
+char *alloc_copy_str (const char *str) {
+  size_t len = strlen(str);
+  char *out = calloc(len + 1, sizeof(char));
+  if (!out) {
+    return NULL;
+  }
+  memcpy(out, str, len + 1);
+  return out;
+}
+
+/**
+  * Helper: Allocate and format the object ID into a hex representation string
+  * Output string must be freed by caller if successful
+  */
+int alloc_format_git_oid (char **out, const git_oid* id) {
+  *out = calloc(GIT_OID_MAX_HEXSIZE + 1, sizeof(char));
+  int err = git_oid_fmt(*out, id);
+  if (err != GIT_OK) {
+    free(*out);
+    return err;
+  }
+  (*out)[GIT_OID_MAX_HEXSIZE] = '\0';
+  return err;
+}
+
 // Wrapper function to handle the options structures outside of stanza
 // Creates a clone of the repo at 'url' in 'local_path' with the given depth
 // Set depth = 0 for full (normal) clone
@@ -45,9 +74,8 @@ int stz_libgit2_fetch(git_repository *repo, const char *remote_name, const char 
   if (refspec) {
     // Make a copy of 'refspec' to satisfy non-const requirement
     size_t refspec_size = strlen(refspec) + 1;
-    char *refspec_copy[1] = {};
-    refspec_copy[0] = calloc(refspec_size, sizeof(char));
-    memcpy(refspec_copy[0], refspec, refspec_size);
+    char *refspec_copy[1] = {0};
+    refspec_copy[0] = alloc_copy_str(refspec);
 
     const git_strarray refspecs = {refspec_copy, 1};
 	  err = git_remote_fetch(remote, &refspecs, &fetch_opts, NULL);
@@ -98,7 +126,7 @@ int stz_libgit2_checkout(git_repository *repo, const char *refish, git_checkout_
 // Wrapper function to handle the data structures outside of stanza
 // Convert the reference 'refish' into a git_oid
 // Requires that the library has been initialized with git_libgit2_init()
-// Requires the output string to be freed by the caller
+// Caller must free the output string
 int stz_libgit2_revparse(char **out, git_repository *repo, const char *refish)
 {
 	int err = 0;
@@ -110,20 +138,88 @@ int stz_libgit2_revparse(char **out, git_repository *repo, const char *refish)
     return err;
   }
 
-  /**
-   * Format the object ID into a hex string
-   */
-  *out = calloc(GIT_OID_MAX_HEXSIZE + 1, sizeof(char));
-  err = git_oid_fmt(*out, git_object_id(target_obj));
+  /* Format the object's ID into a hex string */
+  err = alloc_format_git_oid(out, git_object_id(target_obj));
   if (err != GIT_OK) {
     git_object_free(target_obj);
-    free(*out);
     return err;
   }
-  (*out)[GIT_OID_MAX_HEXSIZE] = '\0';
 
   /* Cleanup */
   git_object_free(target_obj);
+
+  return GIT_OK;
+}
+
+// Wrapper function to handle the option structures outside of stanza
+// List all available references of the remote 'remote_name' of the repository
+// 'repo'
+// 'ids_out' will contain the hex-formatted object IDs for each reference
+// 'names_out' will contain the names of each reference
+// Requires that the library has been initialized with git_libgit2_init()
+// Caller must free all strings in the output arrays and the arrays themselves
+int stz_libgit2_lsremote(char ***ids_out, char ***names_out, long long *out_len,
+                         git_repository *repo, const char *remote_name)
+{
+  int err;
+  size_t i, j;
+
+  git_remote *remote = NULL;
+  git_remote_callbacks callbacks = GIT_REMOTE_CALLBACKS_INIT;
+
+  const git_remote_head **refs;
+  size_t refs_len;
+  char **ref_ids = NULL;
+  char **ref_names = NULL;
+
+  /* Lookup remote */
+  err = git_remote_lookup(&remote, repo, remote_name);
+  if (err != GIT_OK) {
+    return err;
+  }
+
+  /* Connect to remote */
+  err = git_remote_connect(remote, GIT_DIRECTION_FETCH, &callbacks, NULL, NULL);
+  if (err != GIT_OK) {
+    git_remote_free(remote);
+    return err;
+  }
+
+  /* List remote references */
+  err = git_remote_ls(&refs, &refs_len, remote);
+  if (err != GIT_OK) {
+    git_remote_free(remote);
+    return err;
+  }
+
+  /* Format references */
+  ref_ids = calloc(refs_len, sizeof(char *));
+  ref_names = calloc(refs_len, sizeof(char *));
+  for (i = 0; i < refs_len; i++) {
+    /* Format reference ID */
+    err = alloc_format_git_oid(&(ref_ids[i]), &(refs[i]->oid));
+    if (err != GIT_OK) {
+      for (j = 0; j < i; j++) {
+        free(ref_ids[j]);
+        free(ref_names[j]);
+      }
+      free(ref_ids);
+      free(ref_names);
+      git_remote_free(remote);
+      return err;
+    }
+
+    /* Copy reference name */
+    ref_names[i] = alloc_copy_str(refs[i]->name);
+  }
+
+  /* Copy to output */
+  *ids_out = ref_ids;
+  *names_out = ref_names;
+  *out_len = refs_len;
+
+  /* Cleanup */
+  git_remote_free(remote);
 
   return GIT_OK;
 }

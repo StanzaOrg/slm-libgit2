@@ -6,6 +6,16 @@ defpackage libgit2 :
   forward libgit2/enum/git_error_t
   forward libgit2/enum/git_checkout_strategy_t
 
+;============================================================
+;================== Heap Allocation Types ===================
+;============================================================
+
+lostanza deftype PointerBox :
+  var value:ptr<?>
+
+lostanza deftype LongBox :
+  var value:long
+
 ;==============================================
 ;================= C Externs ==================
 ;==============================================
@@ -114,6 +124,10 @@ extern stz_libgit2_checkout : (ptr<GIT_REPOSITORY>, ptr<byte>, int) -> int
 ;;int stz_libgit2_revparse(char **out, git_repository *repo, const char *refish)
 extern stz_libgit2_revparse : (ptr<ptr<byte>>, ptr<GIT_REPOSITORY>, ptr<byte>) -> int
 
+;; int stz_libgit2_lsremote(char ***ids_out, char ***names_out, size_t *out_len,
+;;                          git_repository *repo, const char *remote_name)
+extern stz_libgit2_lsremote : (ptr<ptr<ptr<byte>>>, ptr<ptr<ptr<byte>>>, ptr<long>, ptr<GIT_REPOSITORY>, ptr<byte>) -> int
+
 ;============================================================
 ;======================= Wrappers ===========================
 ;============================================================
@@ -138,27 +152,21 @@ public lostanza defn libgit2_repository_free (gr:ref<GIT_REPOSITORY>) -> ref<Int
 
 ; Open the repository in the folder at 'path'
 public lostanza defn libgit2_repository_open (path:ref<String>) -> ref<git_error_code|GIT_REPOSITORY> :
-  val pgr:ptr<ptr<?>> = call-c clib/malloc(sizeof(ptr<?>))
-  val r:int = call-c git_repository_open(pgr, addr!(path.chars))
+  val repo-ptr-box = new PointerBox{null}
+  val r:int = call-c git_repository_open(addr!(repo-ptr-box.value) as ptr<ptr<?>>, addr!(path.chars))
   if r == 0 :
-    val gr:ptr<?> = [pgr]
-    call-c clib/free(pgr)
-    return new GIT_REPOSITORY{gr}
+    return new GIT_REPOSITORY{repo-ptr-box.value}
   else :
-    call-c clib/free(pgr)
     return git_error_code(r)
 
 ; Wrapper for git_clone
 ; Requires that the library has been initialized
 public lostanza defn libgit2_clone (url:ref<String>, local_path:ref<String>, depth:ref<Int>) -> ref<git_error_code|GIT_REPOSITORY> :
-  val pgr:ptr<ptr<?>> = call-c clib/malloc(sizeof(ptr<?>))
-  val r:int = call-c stz_libgit2_clone(pgr, addr!(url.chars), addr!(local_path.chars), depth.value)
+  val repo-ptr-box = new PointerBox{null}
+  val r:int = call-c stz_libgit2_clone(addr!(repo-ptr-box.value) as ptr<ptr<?>>, addr!(url.chars), addr!(local_path.chars), depth.value)
   if r == 0 :
-    val gr:ptr<?> = [pgr]
-    call-c clib/free(pgr)
-    return new GIT_REPOSITORY{gr}
+    return new GIT_REPOSITORY{repo-ptr-box.value}
   else :
-    call-c clib/free(pgr)
     return git_error_code(r)
 
 ; Overload for git_clone with default depth = 0 (full clone)
@@ -196,14 +204,40 @@ public defn libgit2_checkout (repo:GIT_REPOSITORY, refish:String) -> git_error_c
 ; 'refish' in the repo 'repo'
 ; Requires that the library has been initialized
 public lostanza defn libgit2_revparse (repo:ref<GIT_REPOSITORY>, refish:ref<String>) -> ref<git_error_code|String> :
-  val oid_str_ptr:ptr<ptr<?>> = call-c clib/malloc(sizeof(ptr<?>))
-  val r:int = call-c stz_libgit2_revparse(oid_str_ptr, repo.gr-ptr, addr!(refish.chars))
+  val oid-ptr-box = new PointerBox{null}
+  val r:int = call-c stz_libgit2_revparse(addr!(oid-ptr-box.value) as ptr<ptr<byte>>, repo.gr-ptr, addr!(refish.chars))
   if r == 0 :
-    val oid_str = String(GIT_OID_MAX_HEXSIZE, [oid_str_ptr])
-    call-c clib/free(oid_str_ptr)
-    return oid_str
+    val result = String(GIT_OID_MAX_HEXSIZE, oid-ptr-box.value as ptr<byte>)
+    call-c clib/free(oid-ptr-box.value as ptr<byte>)
+    return result
   else :
-    call-c clib/free(oid_str_ptr)
+    return git_error_code(r)
+
+; Returns the 40-character hex representation of the object ID of the reference
+; 'refish' in the repo 'repo'
+; Requires that the library has been initialized
+public lostanza defn libgit2_lsremote (repo:ref<GIT_REPOSITORY>, refish:ref<String>) -> ref<git_error_code|Tuple<KeyValue<String,String>>> :
+  val ids-ptr-box = new PointerBox{null}
+  val names-ptr-box = new PointerBox{null}
+  val len-box = new LongBox{0L}
+  val r:int = call-c stz_libgit2_lsremote(addr!(ids-ptr-box.value) as ptr<ptr<ptr<byte>>>, addr!(names-ptr-box.value) as ptr<ptr<ptr<byte>>>, addr!(len-box.value) as ptr<long>, repo.gr-ptr, addr!(refish.chars))
+  if r == 0 :
+    val ids-ptr = ids-ptr-box.value as ptr<ptr<byte>>
+    val names-ptr = names-ptr-box.value as ptr<ptr<byte>>
+    val len = len-box.value
+
+    val result = core/void-tuple(len)
+    for (var i:long = 0L, i < len, i = i + 1L) :
+      val id-ptr = [ids-ptr + (i * sizeof(ptr<byte>))] as ptr<byte>
+      val name-ptr = [names-ptr + (i * sizeof(ptr<byte>))] as ptr<byte>
+      result.items[i] = KeyValue(String(id-ptr), String(name-ptr))
+      call-c clib/free(id-ptr)
+      call-c clib/free(name-ptr)
+
+    call-c clib/free(ids-ptr)
+    call-c clib/free(names-ptr)
+    return result
+  else :
     return git_error_code(r)
 
 ; EXAMPLE FIXME public lostanza defn libarchive_error_string (p:ref<LIBARCHIVE>) -> ref<String|False> :
