@@ -151,48 +151,30 @@ int stz_libgit2_revparse(char **out, git_repository *repo, const char *refish)
   return GIT_OK;
 }
 
-// Wrapper function to handle the option structures outside of stanza
-// List all available references of the remote 'remote_name' of the repository
-// 'repo'
-// 'ids_out' will contain the hex-formatted object IDs for each reference
-// 'names_out' will contain the names of each reference
-// Requires that the library has been initialized with git_libgit2_init()
+// Helper for stz_libgit2_lsremote and stz_libgit2_lsremote_url
+// Connects to the remote and allocates strings for all the remote's references
+// and their ID hashes
 // Caller must free all strings in the output arrays and the arrays themselves
-int stz_libgit2_lsremote(char ***ids_out, char ***names_out, long long *out_len,
-                         git_repository *repo, const char *remote_name)
+int alloc_list_refs(char ***ids_out, char ***names_out, long long *out_len, git_remote *remote)
 {
   int err;
   size_t i, j;
 
-  git_remote *remote = NULL;
   git_remote_callbacks callbacks = GIT_REMOTE_CALLBACKS_INIT;
-
   const git_remote_head **refs;
   size_t refs_len;
   char **ref_ids = NULL;
   char **ref_names = NULL;
 
-  /* Lookup remote */
-  err = git_remote_lookup(&remote, repo, remote_name);
-  if (err != GIT_OK) {
-    err = git_remote_create_anonymous(&remote, repo, remote_name);
-    if (err != GIT_OK) {
-      return err;
-    }
-    return err;
-  }
-
   /* Connect to remote */
   err = git_remote_connect(remote, GIT_DIRECTION_FETCH, &callbacks, NULL, NULL);
   if (err != GIT_OK) {
-    git_remote_free(remote);
     return err;
   }
 
   /* List remote references */
   err = git_remote_ls(&refs, &refs_len, remote);
   if (err != GIT_OK) {
-    git_remote_free(remote);
     return err;
   }
 
@@ -209,7 +191,6 @@ int stz_libgit2_lsremote(char ***ids_out, char ***names_out, long long *out_len,
       }
       free(ref_ids);
       free(ref_names);
-      git_remote_free(remote);
       return err;
     }
 
@@ -221,6 +202,67 @@ int stz_libgit2_lsremote(char ***ids_out, char ***names_out, long long *out_len,
   *ids_out = ref_ids;
   *names_out = ref_names;
   *out_len = refs_len;
+
+  return GIT_OK;
+}
+
+// Wrapper function to handle the option structures outside of stanza
+// List all available references of the remote 'remote_name' of the repository
+// 'repo'
+// 'ids_out' will contain the hex-formatted object IDs for each reference
+// 'names_out' will contain the names of each reference
+// Requires that the library has been initialized with git_libgit2_init()
+// Caller must free all strings in the output arrays and the arrays themselves
+int stz_libgit2_lsremote(char ***ids_out, char ***names_out, long long *out_len,
+                         git_repository *repo, const char *remote_name)
+{
+  int err;
+  git_remote *remote = NULL;
+
+  /* Lookup remote */
+  err = git_remote_lookup(&remote, repo, remote_name);
+  if (err != GIT_OK) {
+    return err;
+  }
+
+  /* List remote references */
+  err = alloc_list_refs(ids_out, names_out, out_len, remote);
+  if (err != GIT_OK) {
+    git_remote_free(remote);
+    return err;
+  }
+
+  /* Cleanup */
+  git_remote_free(remote);
+
+  return GIT_OK;
+}
+
+// Wrapper function to handle the option structures outside of stanza
+// List all available references of the remote at the URL 'remote_url'
+// 'ids_out' will contain the hex-formatted object IDs for each reference
+// 'names_out' will contain the names of each reference
+// Requires that the library has been initialized with git_libgit2_init()
+// Caller must free all strings in the output arrays and the arrays themselves
+int stz_libgit2_lsremote_url(char ***ids_out, char ***names_out,
+                             long long *out_len, const char *remote_url)
+{
+  int err;
+  git_remote *remote = NULL;
+	git_remote_create_options remote_create_opts = GIT_REMOTE_CREATE_OPTIONS_INIT;
+
+  /* Lookup remote */
+  err = git_remote_create_with_opts(&remote, remote_url, &remote_create_opts);
+  if (err != GIT_OK) {
+    return err;
+  }
+
+  /* List remote references */
+  err = alloc_list_refs(ids_out, names_out, out_len, remote);
+  if (err != GIT_OK) {
+    git_remote_free(remote);
+    return err;
+  }
 
   /* Cleanup */
   git_remote_free(remote);

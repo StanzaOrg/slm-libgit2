@@ -128,6 +128,9 @@ extern stz_libgit2_revparse : (ptr<ptr<byte>>, ptr<GIT_REPOSITORY>, ptr<byte>) -
 ;;                          git_repository *repo, const char *remote_name)
 extern stz_libgit2_lsremote : (ptr<ptr<ptr<byte>>>, ptr<ptr<ptr<byte>>>, ptr<long>, ptr<GIT_REPOSITORY>, ptr<byte>) -> int
 
+;; int stz_libgit2_lsremote_url(char ***ids_out, char ***names_out, size_t *out_len, const char *remote_url)
+extern stz_libgit2_lsremote_url : (ptr<ptr<ptr<byte>>>, ptr<ptr<ptr<byte>>>, ptr<long>, ptr<byte>) -> int
+
 ;============================================================
 ;======================= Wrappers ===========================
 ;============================================================
@@ -213,32 +216,53 @@ public lostanza defn libgit2_revparse (repo:ref<GIT_REPOSITORY>, refish:ref<Stri
   else :
     return git_error_code(r)
 
-; Returns the 40-character hex representation of the object ID of the reference
-; 'refish' in the repo 'repo'
+; Returns a list of hash ID => reference name for all references on the remote
+; 'remote-name' of the repo 'repo'
 ; Requires that the library has been initialized
-public lostanza defn libgit2_lsremote (repo:ref<GIT_REPOSITORY>, refish:ref<String>) -> ref<git_error_code|Tuple<KeyValue<String,String>>> :
+public lostanza defn libgit2_lsremote (repo:ref<GIT_REPOSITORY>, remote-name:ref<String>) -> ref<git_error_code|Tuple<KeyValue<String,String>>> :
   val ids-ptr-box = new PointerBox{null}
   val names-ptr-box = new PointerBox{null}
   val len-box = new LongBox{0L}
-  val r:int = call-c stz_libgit2_lsremote(addr!(ids-ptr-box.value) as ptr<ptr<ptr<byte>>>, addr!(names-ptr-box.value) as ptr<ptr<ptr<byte>>>, addr!(len-box.value) as ptr<long>, repo.gr-ptr, addr!(refish.chars))
+  val r:int = call-c stz_libgit2_lsremote(addr!(ids-ptr-box.value) as ptr<ptr<ptr<byte>>>, addr!(names-ptr-box.value) as ptr<ptr<ptr<byte>>>, addr!(len-box.value) as ptr<long>, repo.gr-ptr, addr!(remote-name.chars))
   if r == 0 :
-    val ids-ptr = ids-ptr-box.value as ptr<ptr<byte>>
-    val names-ptr = names-ptr-box.value as ptr<ptr<byte>>
-    val len = len-box.value
-
-    val result = core/void-tuple(len)
-    for (var i:long = 0L, i < len, i = i + 1L) :
-      val id-ptr = [ids-ptr + (i * sizeof(ptr<byte>))] as ptr<byte>
-      val name-ptr = [names-ptr + (i * sizeof(ptr<byte>))] as ptr<byte>
-      result.items[i] = KeyValue(String(id-ptr), String(name-ptr))
-      call-c clib/free(id-ptr)
-      call-c clib/free(name-ptr)
-
-    call-c clib/free(ids-ptr)
-    call-c clib/free(names-ptr)
-    return result
+    return convert-and-free-reference-hash-name-arrays(ids-ptr-box,
+             names-ptr-box, len-box)
   else :
     return git_error_code(r)
+
+; Returns a list of hash ID => reference name for all references on the remote
+; at the URL 'remote-url'
+; Requires that the library has been initialized
+public lostanza defn libgit2_lsremote_url (remote-url:ref<String>) -> ref<git_error_code|Tuple<KeyValue<String,String>>> :
+  val ids-ptr-box = new PointerBox{null}
+  val names-ptr-box = new PointerBox{null}
+  val len-box = new LongBox{0L}
+  val r:int = call-c stz_libgit2_lsremote_url(addr!(ids-ptr-box.value) as ptr<ptr<ptr<byte>>>, addr!(names-ptr-box.value) as ptr<ptr<ptr<byte>>>, addr!(len-box.value) as ptr<long>, addr!(remote-url.chars))
+  if r == 0 :
+    return convert-and-free-reference-hash-name-arrays(ids-ptr-box,
+             names-ptr-box, len-box)
+  else :
+    return git_error_code(r)
+
+; Helper for libgit2_lsremote and libgit2_lsremote_url to convert hash and
+; reference name arrays into a tuple of HiStanza hash => reference name entries
+; Also frees the strings
+lostanza defn convert-and-free-reference-hash-name-arrays (
+                ids-ptr-box:ref<PointerBox>, names-ptr-box:ref<PointerBox>,
+                len-box:ref<LongBox>) -> ref<Tuple<KeyValue<String,String>>> :
+  val ids-arr = ids-ptr-box.value as ptr<ptr<byte>>
+  val names-arr = names-ptr-box.value as ptr<ptr<byte>>
+  val len = len-box.value
+  val result = core/void-tuple(len)
+  for (var i:long = 0L, i < len, i = i + 1L) :
+    val id = [ids-arr + (i * sizeof(ptr<byte>))] as ptr<byte>
+    val name = [names-arr + (i * sizeof(ptr<byte>))] as ptr<byte>
+    result.items[i] = KeyValue(String(id), String(name))
+    call-c clib/free(id)
+    call-c clib/free(name)
+  call-c clib/free(ids-arr)
+  call-c clib/free(names-arr)
+  return result
 
 ; EXAMPLE FIXME public lostanza defn libarchive_error_string (p:ref<LIBARCHIVE>) -> ref<String|False> :
 ;   val pb:ptr<byte> = call-c archive_error_string(p.la-ptr)

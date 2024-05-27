@@ -132,30 +132,16 @@ deftest(online) test-lsremote :
 
 deftest(online) test-lsremote-by-url :
   libgit2_init()
-  var err:git_error_code
-
-  ; Shallow clone
-  val r:git_error_code|GIT_REPOSITORY = libgit2_clone("https://github.com/StanzaOrg/stanza-toml.git", "./foo-lsremote-by-url", 1)
-  val repo = match(r):
-    (err:git_error_code) :
-      println("libgit2_clone returned error: %_" % [err])
-      println("last error = %_" % [message(libgit2_error_last())])
-      libgit2_shutdown()
-      #EXPECT(false)
-    (repo:GIT_REPOSITORY) :
-      repo
 
   ; lsremote
-  match(libgit2_lsremote(repo, "https://github.com/StanzaOrg/stanza-toml.git")) :
+  match(libgit2_lsremote_url("https://github.com/StanzaOrg/stanza-toml.git")) :
     (err:git_error_code) :
       println("libgit2_lsremote returned error: %_" % [err])
       println("last error = %_" % [message(libgit2_error_last())])
-      libgit2_repository_free(repo)
       libgit2_shutdown()
       #EXPECT(false)
     (refs:Tuple<KeyValue<String,String>>) :
       false
 
   ; Cleanup
-  libgit2_repository_free(repo)
   libgit2_shutdown()
