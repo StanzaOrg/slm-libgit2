@@ -7,13 +7,13 @@ package libgit2 requires :
   ccfiles: "src/libgit2.c"
   ccflags:
     on-platform:
-      linux: ( "-I{.}/../libgit2/include"  "-Wl,--start-group"  "{.}/../libgit2/lib/libgit2.a" "{.}/../zlib/lib/libz.a" "{.}/../libiconv/lib/libiconv.a" "{.}/../libiconv/lib/libcharset.a"  "-lz" "-ldl"   "-Wl,--end-group"  )
-      os-x: ( "-I{.}/../libgit2/include" "{.}/../libgit2/lib/libgit2.a" "{.}/../zlib/lib/libz.a" "{.}/../libiconv/lib/libiconv.a" "{.}/../libiconv/lib/libcharset.a"  "-lz" "-Wl,-framework,CoreFoundation" "-Wl,-framework,SystemConfiguration" "-Wl,-framework,Security"  )
-      windows: ( "-I{.}/../libgit2/include"  "-Wl,--start-group"  "{.}/../libgit2/lib/libgit2.a" "{.}/../zlib/lib/libz.a" "{.}/../libiconv/lib/libiconv.a" "{.}/../libiconv/lib/libcharset.a"  "-lz" "-lbcrypt" "-lcrypt32" "-lws2_32"   "-Wl,--end-group"  )
+      linux: ( "-I{.}/../libgit2/include"  "-Wl,--start-group"  "{.}/../libgit2/lib/libgit2.a" "{.}/../http_parser/lib/libhttp_parser.a" "{.}/../libssh2/lib/libssh2.a" "{.}/../openssl/lib/libcrypto.a" "{.}/../openssl/lib/libssl.a" "{.}/../zlib/lib/libz.a"  "-lz" "-ldl"  "-Wl,--end-group"  )
+      os-x: ( "-I{.}/../libgit2/include" "{.}/../libgit2/lib/libgit2.a" "{.}/../zlib/lib/libz.a" "{.}/../http_parser/lib/libhttp_parser.a" "{.}/../libssh2/lib/libssh2.a" "{.}/../openssl/lib/libcrypto.a" "{.}/../openssl/lib/libssl.a" "{.}/../zlib/lib/libz.a"  "-lz" "-Wl,-framework,CoreFoundation" "-Wl,-framework,SystemConfiguration" "-Wl,-framework,Security"  )
+      windows: ( "-I{.}/../libgit2/include"  "-Wl,--start-group"  "{.}/../libgit2/lib/libgit2.a" "{.}/../http_parser/lib/libhttp_parser.a" "{.}/../libssh2/lib/libssh2.a" "{.}/../openssl/lib/libcrypto.a" "{.}/../openssl/lib/libssl.a" "{.}/../zlib/lib/libz.a"  "-lz" "-lbcrypt" "-lcrypt32" "-lws2_32" "-lgdi32" "-lwinhttp" "-lrpcrt4" "-lsecur32" "-lole32" "-Wl,--end-group"  )
 
 package libgit2/tests requires :
   ccflags:
     on-platform:
-      linux: ( "-I{.}/../libgit2/include"  "-Wl,--start-group"  "{.}/../libgit2/lib/libgit2.a" "{.}/../zlib/lib/libz.a" "{.}/../libiconv/lib/libiconv.a" "{.}/../libiconv/lib/libcharset.a"  "-lz" "-ldl"   "-Wl,--end-group"  )
-      os-x: ( "-I{.}/../libgit2/include" "{.}/../libgit2/lib/libgit2.a" "{.}/../zlib/lib/libz.a" "{.}/../libiconv/lib/libiconv.a" "{.}/../libiconv/lib/libcharset.a"  "-lz" "-Wl,-framework,CoreFoundation" "-Wl,-framework,SystemConfiguration" "-Wl,-framework,Security"  )
-      windows: ( "-I{.}/../libgit2/include"  "-Wl,--start-group"  "{.}/../libgit2/lib/libgit2.a" "{.}/../zlib/lib/libz.a" "{.}/../libiconv/lib/libiconv.a" "{.}/../libiconv/lib/libcharset.a"  "-lz" "-lbcrypt" "-lcrypt32" "-lws2_32"   "-Wl,--end-group"  )
+      linux: ( "-I{.}/../libgit2/include"  "-Wl,--start-group"  "{.}/../libgit2/lib/libgit2.a" "{.}/../http_parser/lib/libhttp_parser.a" "{.}/../libssh2/lib/libssh2.a" "{.}/../openssl/lib/libcrypto.a" "{.}/../openssl/lib/libssl.a" "{.}/../zlib/lib/libz.a"  "-lz" "-ldl"  "-Wl,--end-group"  )
+      os-x: ( "-I{.}/../libgit2/include" "{.}/../libgit2/lib/libgit2.a" "{.}/../zlib/lib/libz.a" "{.}/../http_parser/lib/libhttp_parser.a" "{.}/../libssh2/lib/libssh2.a" "{.}/../openssl/lib/libcrypto.a" "{.}/../openssl/lib/libssl.a" "{.}/../zlib/lib/libz.a"  "-lz" "-Wl,-framework,CoreFoundation" "-Wl,-framework,SystemConfiguration" "-Wl,-framework,Security"  )
+      windows: ( "-I{.}/../libgit2/include"  "-Wl,--start-group"  "{.}/../libgit2/lib/libgit2.a" "{.}/../http_parser/lib/libhttp_parser.a" "{.}/../libssh2/lib/libssh2.a" "{.}/../openssl/lib/libcrypto.a" "{.}/../openssl/lib/libssl.a" "{.}/../zlib/lib/libz.a"  "-lz" "-lbcrypt" "-lcrypt32" "-lws2_32" "-lgdi32" "-lwinhttp" "-lrpcrt4" "-lsecur32" "-lole32" "-Wl,--end-group"  )
