@@ -58,9 +58,9 @@ public val GIT_CHECKOUT_UPDATE_SUBMODULES_IF_CHANGED = new GIT_CHECKOUT_UPDATE_S
 public defn to-int (v:git_checkout_strategy_t) -> Int:
   match(v) :
     (x:GIT_CHECKOUT_NONE) : 0
-    (x:GIT_CHECKOUT_SAFE) : (1 << 1)
-    (x:GIT_CHECKOUT_FORCE) : (1 << 2)
-    (x:GIT_CHECKOUT_RECREATE_MISSING) : (1 << 3)
+    (x:GIT_CHECKOUT_SAFE) : (1 << 0)
+    (x:GIT_CHECKOUT_FORCE) : (1 << 1)
+    (x:GIT_CHECKOUT_RECREATE_MISSING) : (1 << 2)
     (x:GIT_CHECKOUT_ALLOW_CONFLICTS) : (1 << 4)
     (x:GIT_CHECKOUT_REMOVE_UNTRACKED) : (1 << 5)
     (x:GIT_CHECKOUT_REMOVE_IGNORED) : (1 << 6)
@@ -142,4 +142,3 @@ public defmethod print (o:OutputStream, v:git_checkout_strategy_t) :
 
 public defmethod equal? (a:git_checkout_strategy_t, b:git_checkout_strategy_t) -> True|False :
   to-int(a) == to-int(b)
-
