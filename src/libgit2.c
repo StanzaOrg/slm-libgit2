@@ -5,9 +5,10 @@
 
 /**
   * Helper: Allocate and copy the string
+  * Returns null if calloc fails
   * Output string must be freed by caller
   */
-char *alloc_copy_str (const char *str) {
+static char *alloc_copy_str (const char *str) {
   size_t len = strlen(str);
   char *out = calloc(len + 1, sizeof(char));
   if (!out) {
@@ -19,10 +20,15 @@ char *alloc_copy_str (const char *str) {
 
 /**
   * Helper: Allocate and format the object ID into a hex representation string
+  * Returns GIT_ERROR if calloc fails
   * Output string must be freed by caller if successful
   */
-int alloc_format_git_oid (char **out, const git_oid* id) {
+static int alloc_format_git_oid (char **out, const git_oid* id) {
   *out = calloc(GIT_OID_MAX_HEXSIZE + 1, sizeof(char));
+  if (!(*out)) {
+    git_error_set_oom();
+    return GIT_ERROR;
+  }
   int err = git_oid_fmt(*out, id);
   if (err != GIT_OK) {
     free(*out);
@@ -76,6 +82,11 @@ int stz_libgit2_fetch(git_repository *repo, const char *remote_name, const char 
     size_t refspec_size = strlen(refspec) + 1;
     char *refspec_copy[1] = {0};
     refspec_copy[0] = alloc_copy_str(refspec);
+    if (!refspec_copy[0]) {
+      git_remote_free(remote);
+      git_error_set_oom();
+      return GIT_ERROR;
+    }
 
     const git_strarray refspecs = {refspec_copy, 1};
 	  err = git_remote_fetch(remote, &refspecs, &fetch_opts, NULL);
@@ -180,15 +191,28 @@ int alloc_list_refs(char ***ids_out, char ***names_out, long long *out_len, git_
 
   /* Format references */
   ref_ids = calloc(refs_len, sizeof(char *));
+  if (!ref_ids) {
+    git_error_set_oom();
+    return GIT_ERROR;
+  }
+
   ref_names = calloc(refs_len, sizeof(char *));
+  if (!ref_names) {
+    free(ref_ids);
+    git_error_set_oom();
+    return GIT_ERROR;
+  }
+
   for (i = 0; i < refs_len; i++) {
     /* Format reference ID */
     err = alloc_format_git_oid(&(ref_ids[i]), &(refs[i]->oid));
     if (err != GIT_OK) {
+      /* Free strings allocated so far */
       for (j = 0; j < i; j++) {
         free(ref_ids[j]);
         free(ref_names[j]);
       }
+      /* Free string arrays */
       free(ref_ids);
       free(ref_names);
       return err;
@@ -196,6 +220,18 @@ int alloc_list_refs(char ***ids_out, char ***names_out, long long *out_len, git_
 
     /* Copy reference name */
     ref_names[i] = alloc_copy_str(refs[i]->name);
+    if (!(ref_names[i])) {
+      /* Free strings allocated so far */
+      for (j = 0; j < i; j++) {
+        free(ref_ids[j]);
+        free(ref_names[j]);
+      }
+      free(ref_ids[i]);
+      /* Free string arrays */
+      free(ref_ids);
+      free(ref_names);
+      return err;
+    }
   }
 
   /* Copy to output */
