@@ -1,5 +1,5 @@
 build/
 venv/
-.conan2/
-.conan2.cache/
+.conan2
+.conan2.cache
 .slm/

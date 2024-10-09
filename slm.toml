@@ -1,11 +1,11 @@
 name = "slm-libgit2"
-version = "0.0.3"
+version = "0.0.4"
 
 [dependencies]
 
 [dependencies.libgit2]
 pkg="libgit2"
-version="1.7.2"
+version="1.8.1"
 type="conan"
 options.shared = "False"
 options.threadsafe = "True"
