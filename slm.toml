@@ -5,13 +5,14 @@ version = "0.0.5"
 
 [dependencies.libgit2]
 pkg="libgit2"
-version="1.8.1"
+version="1.7.2"
+#version="1.8.1" # segfault?
 type="conan"
 options.shared = "False"
 options.threadsafe = "True"
 options.with_libssh2 = "True"
 options.with_regex = "builtin"
-options.with_http_parser = "http-parser"
+#options.with_http_parser = "http-parser"
 options.linux.fPIC = "True"
 options.linux.with_https = "openssl"
 options.linux.with_ntlmclient = "False"
